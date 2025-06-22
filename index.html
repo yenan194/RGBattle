@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RGBattle</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(9, 40px);
+      grid-template-rows: repeat(9, 40px);
+      gap: 2px;
+      margin-top: 20px;
+    }
+    .cell {
+      width: 40px;
+      height: 40px;
+      background-color: black;
+      border: 1px solid #333;
+      box-sizing: border-box;
+    }
+    #status {
+      margin-top: 10px;
+    }
+    #rules {
+      max-width: 600px;
+      margin-top: 20px;
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+    h2 {
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+  <h1>RGBattle</h1>
+  <div id="game"></div>
+  <div id="status"></div>
+
+  <div id="rules">
+    <h2>Game Rules</h2>
+    <ul>
+      <li>3 Players: R (Red), G (Green), B (Blue)</li>
+      <li>Turns proceed in order: R → G → B → R → ...</li>
+      <li>Each turn, a player selects one cell to cover</li>
+      <li>The selected cell and its 4 neighbors (up/down/left/right) are affected</li>
+      <li>Cell color is determined by who has covered it:
+        <ul>
+          <li>R only → Red</li>
+          <li>G only → Green</li>
+          <li>B only → Blue</li>
+          <li>R+G → Yellow</li>
+          <li>R+B → Magenta</li>
+          <li>G+B → Cyan</li>
+          <li>R+G+B → White</li>
+        </ul>
+      </li>
+      <li>When a cell turns white for the first time, the current player earns 1 point</li>
+      <li>Game ends when all 81 cells turn white</li>
+      <li>The player with the most points wins</li>
+    </ul>
+  </div>
+
+  <script>
+    const COLORS = [
+      'black',    // 0
+      'red',      // 1 R
+      'green',    // 2 G
+      'yellow',   // 3 R+G
+      'blue',     // 4 B
+      'magenta',  // 5 R+B
+      'cyan',     // 6 G+B
+      'white'     // 7 R+G+B
+    ];
+
+    const players = ['R', 'G', 'B'];
+    let currentPlayerIndex = 0;
+    const board = Array(9).fill(null).map(() => Array(9).fill(0));
+    const gameDiv = document.getElementById('game');
+    const statusDiv = document.getElementById('status');
+    const scores = { R: 0, G: 0, B: 0 };
+
+    function createBoard() {
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+          cell.addEventListener('click', handleMove);
+          gameDiv.appendChild(cell);
+        }
+      }
+      updateStatus();
+    }
+
+    function handleMove(event) {
+      const row = parseInt(event.target.dataset.row);
+      const col = parseInt(event.target.dataset.col);
+      const player = players[currentPlayerIndex];
+      const playerBit = 1 << currentPlayerIndex;
+      const changedToWhite = [];
+
+      const positions = [[row, col], [row-1, col], [row+1, col], [row, col-1], [row, col+1]];
+
+      positions.forEach(([r, c]) => {
+        if (r >= 0 && r < 9 && c >= 0 && c < 9) {
+          const prev = board[r][c];
+          const next = prev | playerBit;
+          board[r][c] = next;
+          if (prev !== 7 && next === 7) {
+            changedToWhite.push([r, c]);
+          }
+          updateCell(r, c);
+        }
+      });
+
+      scores[player] += changedToWhite.length;
+
+      currentPlayerIndex = (currentPlayerIndex + 1) % 3;
+      updateStatus();
+      checkGameEnd();
+    }
+
+    function updateCell(row, col) {
+      const index = row * 9 + col;
+      const cell = gameDiv.children[index];
+      cell.style.backgroundColor = COLORS[board[row][col]];
+    }
+
+    function updateStatus() {
+      statusDiv.innerText = `Turn: ${players[currentPlayerIndex]} | R: ${scores.R}, G: ${scores.G}, B: ${scores.B}`;
+    }
+
+    function checkGameEnd() {
+      let whiteCells = 0;
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (board[row][col] === 7) whiteCells++;
+        }
+      }
+      if (whiteCells === 81) {
+        const maxScore = Math.max(scores.R, scores.G, scores.B);
+        const winners = Object.entries(scores).filter(([p, s]) => s === maxScore).map(([p]) => p);
+        alert(`Game Over! Winner${winners.length > 1 ? 's' : ''}: ${winners.join(', ')}`);
+      }
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
